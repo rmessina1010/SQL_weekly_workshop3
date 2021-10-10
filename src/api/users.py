@@ -37,8 +37,8 @@ def create():
     if len(request.json['username']) < 3 or len(request.json['password']) < 8:
         return abort(400)
     u = User(
-        request.json['username'],
-        scramble(request.json['password'])
+        username=request.json['username'],
+        password=scramble(request.json['password'])
     )
     try:
         db.session.add(u)  # prepare CREATE statement
@@ -48,13 +48,52 @@ def create():
         # something went wrong :(
         return jsonify(False)
 
-
 # decorator takes path and list of HTTP verbs
+
+
 @bp.route('/<int:id>', methods=['DELETE'])
 def delete(id: int):
-    return jsonify(False)
+    u = User.query.get_or_404(id)
+    try:
+        db.session.delete(u)  # prepare DELETE statement
+        db.session.commit()  # execute DELETE statement
+        return jsonify(True)
+    except:
+        # something went wrong :(
+        return jsonify(False)
 
 
-@bp.route('', methods=['PUT'])
-def show():
-    return jsonify({"test": 1})
+@bp.route('/<int:id>', methods=['PATCH'])
+def update(id: int):
+    flag = False
+    try:
+        updates = {}
+        if 'username' in request.json:
+            updates['username'] = request.json['username']
+            flag = True
+        if 'password' in request.json:
+            updates['password'] = scramble(request.json['password'])
+            flag = True
+        if flag == False:
+            return jsonify('no change')
+        try:
+            # prepare UPDATE statement
+            db.session.query(User).filter(User.id == id).update(
+                updates, synchronize_session=False)
+            db.session.commit()  # execute UPDATE statement
+            return jsonify(True)
+        except:
+            # something went wrong :(
+            return jsonify(False)
+    except:
+        # something went wrong :(
+        return jsonify(null)
+
+
+@bp.route('/<int:id>/liked_tweets', methods=['GET'])
+def liking_users(id: int):
+    u = User.query.get_or_404(id)
+    liked = []
+    for l in u.liked_tweets:
+        liked.append(l.serialize())
+    return jsonify(liked)

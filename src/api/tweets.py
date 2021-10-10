@@ -46,3 +46,12 @@ def delete(id: int):
     except:
         # something went wrong :(
         return jsonify(False)
+
+
+@bp.route('/<int:id>/liking_users', methods=['GET'])
+def liking_users(id: int):
+    t = Tweet.query.get_or_404(id)
+    likes = []
+    for l in t.likes:
+        likes.append(l.serialize())
+    return jsonify(likes)
