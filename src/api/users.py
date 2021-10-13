@@ -108,8 +108,8 @@ def like(id: int):
     # if tweek has already beel liked return
     r = sqlalchemy.select(likes_table).where(likes_table.c.user_id == id).where(
         likes_table.c.tweet_id == request.json['tweet_id'])
-    chk = db.session.execute(r)
-    if (chk.rowcount > 0):
+    chk = db.session.query(r.exists()).scalar()
+    if chk:
         return jsonify(False)
     # check user exists
     u = User.query.get_or_404(id)
