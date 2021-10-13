@@ -1,5 +1,7 @@
 from flask import Blueprint, jsonify, abort, request
-from ..models import User, db
+import sqlalchemy
+from ..models import Tweet, User, db, likes_table
+
 import hashlib
 import secrets
 
@@ -87,7 +89,7 @@ def update(id: int):
             return jsonify(False)
     except:
         # something went wrong :(
-        return jsonify(null)
+        return jsonify(None)
 
 
 @bp.route('/<int:id>/liked_tweets', methods=['GET'])
@@ -97,3 +99,47 @@ def liking_users(id: int):
     for l in u.liked_tweets:
         liked.append(l.serialize())
     return jsonify(liked)
+
+
+@bp.route('/<int:id>/likes', methods=['POST'])
+def like(id: int):
+    if 'tweet_id' not in request.json:
+        return abort(400)
+    # if tweek has already beel liked return
+    r = sqlalchemy.select(likes_table).where(likes_table.c.user_id == id).where(
+        likes_table.c.tweet_id == request.json['tweet_id'])
+    chk = db.session.execute(r)
+    if (chk.rowcount > 0):
+        return jsonify(False)
+    # check user exists
+    u = User.query.get_or_404(id)
+    # check tweet exists
+    t = Tweet.query.get_or_404(request.json['tweet_id'])
+    try:
+        stmt = sqlalchemy.insert(likes_table).values(
+            user_id=id, tweet_id=request.json['tweet_id'])
+        db.session.execute(stmt)
+        db.session.commit()
+        return jsonify(True)
+    except:
+        return jsonify(None)
+
+
+@bp.route('/<int:id>/likes', methods=['DELETE'])
+def unlike(id: int):
+    # check user exists
+    u = User.query.get_or_404(id)
+    # check tweet exists
+    t = Tweet.query.get_or_404(request.json['tweet_id'])
+    try:
+        stmt = sqlalchemy.delete(likes_table).where(
+            sqlalchemy.and_(
+                likes_table.c.user_id == id,
+                likes_table.c.tweet_id == request.json['tweet_id']
+            )
+        )
+        db.session.execute(stmt)
+        db.session.commit()
+        return jsonify(True)
+    except:
+        return jsonify(False)
